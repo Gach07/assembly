@@ -245,15 +245,87 @@ print_casilla:
 
 ; Modificar el bucle principal para mostrar el tablero
 .juego_loop:
-    ; ... (código existente antes del turno)
-    
-    ; Mostrar tablero antes de cada turno
+    ; Mostrar el tablero antes del turno
     call print_tablero
     
-    ; ... (resto del código existente)
-    
-    ; Mostrar tablero después de cada movimiento
-    call print_tablero
+    ; Obtener turno actual
+    mov eax, [turno_actual]
+    mov ebx, eax
+    inc eax
+    print msg_turno
+    call print_number
+
+    ; Esperar ENTER para lanzar dado
+    print msg_presione_enter
+    read input, 2
+
+    ; Lanzar dado
+    call random_dado
+    print msg_dado
+    call print_number
+
+    ; Actualizar posición del jugador
+    mov ecx, [turno_actual]
+    mov edx, [jugadores_pos + ecx*4]
+    add edx, eax
+    cmp edx, 100
+    jg .mantener_pos
+    mov [jugadores_pos + ecx*4], edx
+    jmp .verificar_tablero
+
+.mantener_pos:
+    ; Si pasa de 100, no se mueve
+    nop
+
+.verificar_tablero:
+    ; Revisar si hay serpiente o escalera
+    mov eax, [jugadores_pos + ecx*4]
+    dec eax
+    mov ebx, [tablero + eax*4]
+    test ebx, ebx
+    jz .actualizar_turno
+
+    ; Ajustar posición
+    add eax, ebx
+    inc eax
+    mov [jugadores_pos + ecx*4], eax
+
+.actualizar_turno:
+    ; Sumar un turno
+    inc dword [jugadores_turnos + ecx*4]
+    inc dword [total_turnos]
+
+    ; Revisar si ganó
+    mov eax, [jugadores_pos + ecx*4]
+    cmp eax, 100
+    je .victoria
+
+    ; Cambiar al siguiente jugador
+    mov eax, [num_jugadores]
+    dec eax
+    cmp [turno_actual], eax
+    jne .siguiente_turno
+    mov dword [turno_actual], 0
+    jmp .juego_loop
+
+.siguiente_turno:
+    inc dword [turno_actual]
+    jmp .juego_loop
+
+.victoria:
+    print msg_victoria
+    mov eax, [turno_actual]
+    inc eax
+    call print_number
+    print msg_ganador
+    print msg_turnos_total
+    mov eax, [total_turnos]
+    call print_number
+
+    ; Terminar el programa
+    mov eax, SYS_EXIT
+    xor ebx, ebx
+    int 0x80
 
 ; Función para convertir número a cadena (para imprimir)
 ; Entrada: EAX = número, ESI = puntero al buffer
@@ -304,11 +376,26 @@ random_dado:
 _start:
     ; Mostrar mensaje de bienvenida
     print msg_bienvenida
-    
+
     ; Pedir número de jugadores
     .pedir_jugadores:
         print msg_jugadores
         read input, 2
+
+        ; Convertir ASCII a número
+        movzx eax, byte [input]
+        sub eax, '0'
+        cmp eax, 1
+        jl .invalido
+        cmp eax, 5
+        jg .invalido
+
+        mov [num_jugadores], eax
+        jmp .juego_loop
+
+    .invalido:
+        print msg_error_jugadores
+        jmp .pedir_jugadores
         
         ; Validar entrada
         mov al, [input]
