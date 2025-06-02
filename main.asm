@@ -318,14 +318,29 @@ print_casilla:
     inc eax
     call print_number
     print msg_ganador
+
     print msg_turnos_total
     mov eax, [total_turnos]
     call print_number
+    print msg_nueva_linea
 
-    ; Terminar el programa
-    mov eax, SYS_EXIT
+    print msg_posiciones_otros
+    mov ecx, [num_jugadores]
     xor ebx, ebx
-    int 0x80
+
+.mostrar_otros:
+    cmp ebx, [turno_actual]
+    je .saltar_jugador
+
+    ; Mostrar Jugador #
+    print msg_tablero_jugador
+    mov eax, ebx
+    inc eax
+    call print_number
+    print msg_posicion
+    mov eax, [jugadores_pos + ebx*4]
+    call print_number
+    print msg_nueva_linea    
 
 ; Función para convertir número a cadena (para imprimir)
 ; Entrada: EAX = número, ESI = puntero al buffer
