@@ -27,16 +27,13 @@ FILE_NAME=$(basename "$FILE_TO_RUN" .asm)
 
 if [[ "$FILE_TO_RUN" != *.asm ]]; then
     echo "Error: File must have .asm extension"
-
     exit 1
 fi
 
 if [ ! -f "$FILE_TO_RUN" ]; then
     echo "Error: File '$FILE_TO_RUN' not found."
-
     exit 1
 fi
-
 
 # Check if the asm-compiler image exists
 if ! docker image inspect asm-compiler:latest >/dev/null 2>&1; then
@@ -49,11 +46,11 @@ fi
 # Convert current directory path for Docker volume mounting
 CURRENT_DIR=$(win_to_unix_path "$(pwd)")
 
-# Compile the assembly code
+# Compile the assembly code using ld (no gcc)
 docker run --rm -v "${CURRENT_DIR}:/usr/src/app" asm-compiler:latest bash -c "
     set -e
     nasm -f elf32 $FILE_TO_RUN -o ${FILE_NAME}.o
-    gcc -m32 ${FILE_NAME}.o -o $FILE_NAME
+    ld -m elf_i386 -nostdlib -e _start -o $FILE_NAME ${FILE_NAME}.o
 "
 
 echo "Compilation completed. Executable '$FILE_NAME' created."
