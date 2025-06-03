@@ -49,10 +49,11 @@ section .data
     turno_actual dd 0               ; Índice del jugador actual (0-4)
     total_turnos dd 0               ; Turnos totales del juego
     
+    ; Buffer para entrada/salida
+    buffer db 0
 
 section .bss
     input resb 2
-    buffer resb 16
 
 section .text
 
@@ -120,55 +121,49 @@ print_tablero:
     
     ; Imprimir borde superior
     print msg_tablero_superior
-    
+
     ; Inicializar contadores
-    mov ecx, 10        ; 10 filas (de 10 a 1)
-    mov ebx, 100       ; Número de casilla inicial (fila 10)
-    
+    mov ecx, 10        ; 10 filas
+    mov ebx, 100       ; Comenzamos desde la casilla 100 (fila inferior)
+
     .fila_loop:
         ; Imprimir borde lateral izquierdo
         print msg_tablero_lateral
         
-        ; Determinar dirección de la fila
+        ; Determinar dirección de la fila (alternar izquierda/derecha)
         mov eax, ecx
         and eax, 1
-        jz .fila_izquierda
+        jnz .fila_derecha
         
-        ; Fila derecha (números ascendentes: ebx-9 a ebx)
-        mov edx, ebx
-        sub edx, 9      ; Comenzar desde ebx-9
-        mov esi, edx    ; Guardar inicio de fila
+        ; Fila izquierda (números descendentes: 90,89,...,81)
+        mov edx, ebx    ; EDX = número de casilla actual
+        mov esi, 10     ; Contador de columnas
         
-        .fila_derecha_loop:
-            ; Imprimir casilla
+        .casilla_loop_izquierda:
             call print_casilla
-            
-            ; Avanzar al siguiente número
-            inc edx
-            cmp edx, ebx
-            jle .fila_derecha_loop
-        jmp .fin_fila
-        
-        .fila_izquierda:
-        ; Fila izquierda (números descendentes: ebx a ebx-9)
-        mov edx, ebx    ; Comenzar desde ebx
-        mov esi, edx    ; Guardar inicio de fila
-        
-        .fila_izquierda_loop:
-            ; Imprimir casilla
-            call print_casilla
-            
-            ; Retroceder al número anterior
             dec edx
-            cmp edx, ebx
-            jge .fila_izquierda_loop
-        
+            dec esi
+            jnz .casilla_loop_izquierda
+            jmp .fin_fila
+            
+        .fila_derecha:
+            ; Fila derecha (números ascendentes: 71,72,...,80)
+            mov edx, ebx
+            sub edx, 9   ; EDX = primera casilla de la fila
+            mov esi, 10  ; Contador de columnas
+            
+            .casilla_loop_derecha:
+                call print_casilla
+                inc edx
+                dec esi
+                jnz .casilla_loop_derecha
+                
         .fin_fila:
             ; Imprimir borde lateral derecho y nueva línea
             print msg_tablero_lateral
             print msg_nueva_linea
             
-            ; Preparar siguiente fila
+            ; Preparar siguiente fila (retroceder 10 casillas)
             sub ebx, 10
             dec ecx
             jnz .fila_loop
@@ -180,16 +175,8 @@ print_tablero:
     popa
     ret
 
-; Función para imprimir una casilla individual
-; EDX = número de casilla (1-100)
 print_casilla:
     pusha
-    
-    ; Reservar espacio para el número (2 dígitos + espacio)
-    mov byte [buffer], ' '
-    mov byte [buffer+1], ' '
-    mov byte [buffer+2], ' '
-    mov byte [buffer+3], 0
     
     ; Verificar si hay jugadores en esta casilla
     mov ecx, [num_jugadores]
@@ -205,160 +192,117 @@ print_casilla:
     dec eax
     mov eax, [tablero + eax*4]
     test eax, eax
-    jz .imprimir_numero
+    jz .imprimir_vacio
     
     cmp eax, 0
     jg .imprimir_escalera
     
     ; Imprimir serpiente
     print color_rojo
-    mov byte [buffer], 'S'
-    print buffer
+    print msg_tablero_serpiente
     print color_reset
     jmp .fin_casilla
     
     .imprimir_escalera:
         print color_verde
-        mov byte [buffer], 'E'
-        print buffer
+        print msg_tablero_escalera
         print color_reset
         jmp .fin_casilla
     
     .imprimir_jugador:
         print color_azul
-        mov byte [buffer], 'J'
-        mov byte [buffer+1], 0
-        print buffer
+        print msg_tablero_jugador
         mov eax, ebx
-        add al, '1'
-        mov [buffer], al
-        mov byte [buffer+1], 0
-        print buffer
+        inc eax
+        call print_number
         print color_reset
         jmp .fin_casilla
     
-    .imprimir_numero:
-        ; Imprimir número de casilla (2 dígitos)
+    .imprimir_vacio:
+        ; Imprimir número de casilla (o espacio)
         mov eax, edx
-        xor edx, edx
-        mov ebx, 10
-        div ebx         ; EDX = resto, EAX = cociente
-        
-        ; Convertir dígitos a ASCII
-        add al, '0'
-        add dl, '0'
-        
-        ; Almacenar en buffer
-        mov [buffer], al
-        mov [buffer+1], dl
-        print buffer
+        call print_number
     
     .fin_casilla:
+        ; Espacio entre casillas
+        mov byte [buffer], ' '
+        mov byte [buffer+1], 0
+        print buffer
+        
+    popa
+    ret
+
+; Función para imprimir una casilla individual
+; EDX = número de casilla (1-100)
+print_casilla:
+    pusha
+    
+    ; Verificar si hay jugadores en esta casilla
+    mov ecx, [num_jugadores]
+    xor ebx, ebx
+    .buscar_jugador:
+        cmp [jugadores_pos + ebx*4], edx
+        je .imprimir_jugador
+        inc ebx
+        loop .buscar_jugador
+    
+    ; No hay jugador, verificar serpiente/escalera
+    mov eax, edx
+    dec eax
+    mov eax, [tablero + eax*4]
+    test eax, eax
+    jz .imprimir_vacio
+    
+    cmp eax, 0
+    jg .imprimir_escalera
+    
+    ; Imprimir serpiente
+    print color_rojo
+    print msg_tablero_serpiente
+    print color_reset
+    jmp .fin_casilla
+    
+    .imprimir_escalera:
+        print color_verde
+        print msg_tablero_escalera
+        print color_reset
+        jmp .fin_casilla
+    
+    .imprimir_jugador:
+        print color_azul
+        print msg_tablero_jugador
+        mov eax, ebx
+        inc eax
+        call print_number
+        print color_reset
+        jmp .fin_casilla
+    
+    .imprimir_vacio:
+        ; Imprimir número de casilla (o espacio)
+        mov eax, edx
+        call print_number
+    
+    .fin_casilla:
+        ; Espacio entre casillas
+        mov byte [buffer], ' '
+        mov byte [buffer+1], 0
+        print buffer
+        
     popa
     ret
 
 ; Modificar el bucle principal para mostrar el tablero
 .juego_loop:
-    ; Mostrar el tablero antes del turno
+    
+    ; Mostrar tablero antes de cada turno
     call print_tablero
     
-    ; Obtener turno actual
-    mov eax, [turno_actual]
-    mov ebx, eax
-    inc eax
-    print msg_turno
-    call print_number
-
-    ; Esperar ENTER para lanzar dado
-    print msg_presione_enter
-    read input, 2
-
-    ; Lanzar dado
-    call random_dado
-    print msg_dado
-    call print_number
-
-    ; Actualizar posición del jugador
-    mov ecx, [turno_actual]
-    mov edx, [jugadores_pos + ecx*4]
-    add edx, eax
-    cmp edx, 100
-    jg .mantener_pos
-    mov [jugadores_pos + ecx*4], edx
-    jmp .verificar_tablero
-
-.mantener_pos:
-    ; Si pasa de 100, no se mueve
-    nop
-
-.verificar_tablero:
-    ; Revisar si hay serpiente o escalera
-    mov eax, [jugadores_pos + ecx*4]
-    dec eax
-    mov ebx, [tablero + eax*4]
-    test ebx, ebx
-    jz .actualizar_turno
-
-    ; Ajustar posición
-    add eax, ebx
-    inc eax
-    mov [jugadores_pos + ecx*4], eax
-
-.actualizar_turno:
-    ; Sumar un turno
-    inc dword [jugadores_turnos + ecx*4]
-    inc dword [total_turnos]
-
-    ; Revisar si ganó
-    mov eax, [jugadores_pos + ecx*4]
-    cmp eax, 100
-    je .victoria
-
-    ; Cambiar al siguiente jugador
-    mov eax, [num_jugadores]
-    dec eax
-    cmp [turno_actual], eax
-    jne .siguiente_turno
-    mov dword [turno_actual], 0
-    jmp .juego_loop
-
-.siguiente_turno:
-    inc dword [turno_actual]
-    jmp .juego_loop
-
-.victoria:
-    print msg_victoria
-    mov eax, [turno_actual]
-    inc eax
-    call print_number
-    print msg_ganador
-
-    print msg_turnos_total
-    mov eax, [total_turnos]
-    call print_number
-    print msg_nueva_linea
-
-    print msg_posiciones_otros
-    mov ecx, [num_jugadores]
-    xor ebx, ebx
-
-.mostrar_otros:
-    cmp ebx, [turno_actual]
-    je .saltar_jugador
-
-    ; Mostrar Jugador #
-    print msg_tablero_jugador
-    mov eax, ebx
-    inc eax
-    call print_number
-    print msg_posicion
-    mov eax, [jugadores_pos + ebx*4]
-    call print_number
-    print msg_nueva_linea    
+    
+    ; Mostrar tablero después de cada movimiento
+    call print_tablero
 
 ; Función para convertir número a cadena (para imprimir)
 ; Entrada: EAX = número, ESI = puntero al buffer
-
 int_to_string:
     add esi, 9          ; Trabajamos desde el final del buffer
     mov byte [esi], 0    ; Carácter nulo terminador
@@ -381,19 +325,21 @@ random_dado:
     push ebx
     push ecx
     push edx
-
-    ; Obtener el tiempo del sistema 
-    mov eax, 13         ; sys_time 
-    xor ebx, ebx
-    int 0x80            ; devuelve ticks en EAX
-
-    ; Obtener número aleatorio entre 1 y 6
+    
+    ; Obtener tiempo del sistema (ticks)
+    mov eax, 13         ; sys_time
+    xor ebx, ebx        ; NULL
+    int 0x80
+    
+    ; Usar los ticks como semilla
+    mov ecx, eax
+    mov eax, ecx
     xor edx, edx
     mov ebx, 6
-    div ebx             ; EAX / 6, resto en EDX (0 a 5)
+    div ebx             ; Divide por 6 para obtener resto (0-5)
+    inc edx             ; Convierte a 1-6
     mov eax, edx
-    inc eax             ; (1 a 6)
-
+    
     pop edx
     pop ecx
     pop ebx
@@ -403,26 +349,11 @@ random_dado:
 _start:
     ; Mostrar mensaje de bienvenida
     print msg_bienvenida
-
+    
     ; Pedir número de jugadores
     .pedir_jugadores:
         print msg_jugadores
         read input, 2
-
-        ; Convertir ASCII a número
-        movzx eax, byte [input]
-        sub eax, '0'
-        cmp eax, 1
-        jl .error_jugadores
-        cmp eax, 5
-        jg .error_jugadores
-
-        mov [num_jugadores], eax
-        jmp .juego_loop
-
-    .invalido:
-        print msg_error_jugadores
-        jmp .pedir_jugadores
         
         ; Validar entrada
         mov al, [input]
@@ -507,27 +438,38 @@ _start:
                 
                 .verificar_casilla:
                     ; Verificar serpiente/escalera
-                    dec ecx  ; Convertir a índice 0-99
-                    mov eax, [tablero + ecx*4]
+                    mov ecx, [jugadores_pos + ebx*4]  ; Obtener posición actual (1-100)
+                    dec ecx                           ; Convertir a índice 0-99 para el tablero
+                    mov eax, [tablero + ecx*4]        ; Obtener desplazamiento
                     test eax, eax
-                    jz .mostrar_posicion  ; Si 0, no hay cambio
+                    jz .mostrar_posicion              ; Si 0, no hay cambio
                     
                     ; Hay serpiente o escalera
                     cmp eax, 0
                     jg .escalera
                     
-                    ; Serpiente
+                    ; Serpiente (eax es negativo)
                     print msg_serpiente
-                    mov ecx, [jugadores_pos + ebx*4]
-                    add ecx, eax  ; eax es negativo
-                    mov [jugadores_pos + ebx*4], ecx
-                    jmp .mostrar_cambio
+                    mov ecx, [jugadores_pos + ebx*4]  ; Posición original (1-100)
+                    add ecx, eax                      ; Aplicar desplazamiento negativo
+                    cmp ecx, 1                        ; Verificar que no sea menor que 1
+                    jge .guardar_nueva_posicion
+                    mov ecx, 1                        ; Si es menor que 1, colocar en 1
+                    jmp .guardar_nueva_posicion
                     
-                    .escalera:
-                        print msg_escalera
-                        mov ecx, [jugadores_pos + ebx*4]
-                        add ecx, eax
-                        mov [jugadores_pos + ebx*4], ecx
+                .escalera:
+                    print msg_escalera
+                    mov ecx, [jugadores_pos + ebx*4]  ; Posición original (1-100)
+                    add ecx, eax                      ; Aplicar desplazamiento positivo
+                    cmp ecx, 100                      ; Verificar que no pase de 100
+                    jle .guardar_nueva_posicion
+                    mov ecx, 100                      ; Si pasa de 100, colocar en 100
+
+                .guardar_nueva_posicion:
+                    mov [jugadores_pos + ebx*4], ecx  ; Guardar nueva posición
+                    mov eax, ecx
+                    call print_number
+                    print msg_nueva_linea
                     
                     .mostrar_cambio:
                         mov eax, ecx
@@ -540,6 +482,7 @@ _start:
                     mov eax, [jugadores_pos + ebx*4]
                     call print_number
                     print msg_nueva_linea
+                    call print_tablero
                     
                     ; Verificar victoria
                     cmp eax, 100
@@ -609,21 +552,25 @@ _start:
 ; Función para imprimir número (EAX)
 print_number:
     push eax
-    push esi
-
+    push ebx
+    push ecx
+    push edx
+    
     ; Convertir número a cadena
     mov esi, buffer
-    call int_to_string   ; EAX contiene el número, lo convierte en cadena en [buffer]
-
-    ; Imprimir la cadena resultante
-    mov ecx, buffer      ; puntero a la cadena
-    call strlen          ; longitud de la cadena en EAX
-    mov edx, eax         ; longitud a EDX
-    mov eax, 4           ; syscall SYS_WRITE
-    mov ebx, 1           ; STDOUT
-    mov ecx, buffer      ; mensaje
+    call int_to_string
+    
+    ; Imprimir el número
+    mov ecx, eax
+    mov eax, SYS_WRITE
+    mov ebx, STDOUT
+    mov edx, 10  ; Longitud máxima
+    sub edx, eax
+    add edx, ecx
     int 0x80
-
-    pop esi
+    
+    pop edx
+    pop ecx
+    pop ebx
     pop eax
     ret
