@@ -181,54 +181,54 @@ print_casilla:
     ; Verificar si hay jugadores en esta casilla
     mov ecx, [num_jugadores]
     xor ebx, ebx
-    .buscar_jugador:
-        cmp [jugadores_pos + ebx*4], edx
-        je .imprimir_jugador
-        inc ebx
-        loop .buscar_jugador
-    
+.buscar_jugador:
+    cmp [jugadores_pos + ebx*4], edx
+    je .imprimir_jugador
+    inc ebx
+    loop .buscar_jugador
+
     ; No hay jugador, verificar serpiente/escalera
     mov eax, edx
     dec eax
     mov eax, [tablero + eax*4]
     test eax, eax
     jz .imprimir_vacio
-    
+
     cmp eax, 0
     jg .imprimir_escalera
-    
+
     ; Imprimir serpiente
     print color_rojo
     print msg_tablero_serpiente
     print color_reset
     jmp .fin_casilla
-    
-    .imprimir_escalera:
-        print color_verde
-        print msg_tablero_escalera
-        print color_reset
-        jmp .fin_casilla
-    
-    .imprimir_jugador:
-        print color_azul
-        print msg_tablero_jugador
-        mov eax, ebx
-        inc eax
-        call print_number
-        print color_reset
-        jmp .fin_casilla
-    
-    .imprimir_vacio:
-        ; Imprimir número de casilla (o espacio)
-        mov eax, edx
-        call print_number
-    
-    .fin_casilla:
-        ; Espacio entre casillas
-        mov byte [buffer], ' '
-        mov byte [buffer+1], 0
-        print buffer
-        
+
+.imprimir_escalera:
+    print color_verde
+    print msg_tablero_escalera
+    print color_reset
+    jmp .fin_casilla
+
+.imprimir_jugador:
+    print color_azul
+    print msg_tablero_jugador
+    mov eax, ebx
+    inc eax
+    call print_number
+    print color_reset
+    jmp .fin_casilla
+
+.imprimir_vacio:
+    ; Imprimir número de casilla (o espacio)
+    mov eax, edx
+    call print_number
+
+.fin_casilla:
+    ; Espacio entre casillas
+    mov byte [buffer], ' '
+    mov byte [buffer+1], 0
+    print buffer
+
     popa
     ret
 
