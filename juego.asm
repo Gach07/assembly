@@ -387,27 +387,38 @@ _start:
                 
                 .verificar_casilla:
                     ; Verificar serpiente/escalera
-                    dec ecx  ; Convertir a índice 0-99
-                    mov eax, [tablero + ecx*4]
+                    mov ecx, [jugadores_pos + ebx*4]  ; Obtener posición actual (1-100)
+                    dec ecx                           ; Convertir a índice 0-99 para el tablero
+                    mov eax, [tablero + ecx*4]        ; Obtener desplazamiento
                     test eax, eax
-                    jz .mostrar_posicion  ; Si 0, no hay cambio
+                    jz .mostrar_posicion              ; Si 0, no hay cambio
                     
                     ; Hay serpiente o escalera
                     cmp eax, 0
                     jg .escalera
                     
-                    ; Serpiente
+                    ; Serpiente (eax es negativo)
                     print msg_serpiente
-                    mov ecx, [jugadores_pos + ebx*4]
-                    add ecx, eax  ; eax es negativo
-                    mov [jugadores_pos + ebx*4], ecx
-                    jmp .mostrar_cambio
+                    mov ecx, [jugadores_pos + ebx*4]  ; Posición original (1-100)
+                    add ecx, eax                      ; Aplicar desplazamiento negativo
+                    cmp ecx, 1                        ; Verificar que no sea menor que 1
+                    jge .guardar_nueva_posicion
+                    mov ecx, 1                        ; Si es menor que 1, colocar en 1
+                    jmp .guardar_nueva_posicion
                     
-                    .escalera:
-                        print msg_escalera
-                        mov ecx, [jugadores_pos + ebx*4]
-                        add ecx, eax
-                        mov [jugadores_pos + ebx*4], ecx
+                .escalera:
+                    print msg_escalera
+                    mov ecx, [jugadores_pos + ebx*4]  ; Posición original (1-100)
+                    add ecx, eax                      ; Aplicar desplazamiento positivo
+                    cmp ecx, 100                      ; Verificar que no pase de 100
+                    jle .guardar_nueva_posicion
+                    mov ecx, 100                      ; Si pasa de 100, colocar en 100
+
+                .guardar_nueva_posicion:
+                    mov [jugadores_pos + ebx*4], ecx  ; Guardar nueva posición
+                    mov eax, ecx
+                    call print_number
+                    print msg_nueva_linea
                     
                     .mostrar_cambio:
                         mov eax, ecx
