@@ -231,19 +231,6 @@ print_casilla:
 
     popa
     ret
-
-; Función para imprimir una casilla individual
-; EDX = número de casilla (1-100)
-
-    
-    ; Verificar si hay jugadores en esta casilla
-    mov ecx, [num_jugadores]
-    xor ebx, ebx
-    .buscar_jugador:
-        cmp [jugadores_pos + ebx*4], edx
-        je .imprimir_jugador
-        inc ebx
-        loop .buscar_jugador
     
     ; No hay jugador, verificar serpiente/escalera
     mov eax, edx
