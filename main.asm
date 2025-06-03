@@ -232,26 +232,6 @@ print_casilla:
     popa
     ret
     
-    ; No hay jugador, verificar serpiente/escalera
-    mov eax, edx
-    dec eax
-    mov eax, [tablero + eax*4]
-    test eax, eax
-    jz .imprimir_vacio
-    
-    cmp eax, 0
-    jg .imprimir_escalera
-    
-    ; Imprimir serpiente
-    print color_rojo
-    print msg_tablero_serpiente
-    print color_reset
-    jmp .fin_casilla
-    
-    .imprimir_escalera:
-        print color_verde
-        print msg_tablero_escalera
-        print color_reset
         jmp .fin_casilla
     
     .imprimir_jugador:
