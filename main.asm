@@ -49,8 +49,6 @@ section .data
     turno_actual dd 0               ; Índice del jugador actual (0-4)
     total_turnos dd 0               ; Turnos totales del juego
     
-    ; Buffer para entrada/salida
-    buffer db 0
 
 section .bss
     input resb 2
@@ -403,7 +401,7 @@ _start:
         jl .error_jugadores
         cmp eax, 5
         jg .error_jugadores
-        
+
         mov [num_jugadores], eax
         jmp .juego_loop
 
