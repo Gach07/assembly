@@ -234,8 +234,7 @@ print_casilla:
 
 ; Función para imprimir una casilla individual
 ; EDX = número de casilla (1-100)
-print_casilla:
-    pusha
+
     
     ; Verificar si hay jugadores en esta casilla
     mov ecx, [num_jugadores]
