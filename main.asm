@@ -54,6 +54,7 @@ section .data
 
 section .bss
     input resb 2
+    buffer resb 16
 
 section .text
 
@@ -367,21 +368,19 @@ random_dado:
     push ebx
     push ecx
     push edx
-    
-    ; Obtener tiempo del sistema (ticks)
-    mov eax, 13         ; sys_time
-    xor ebx, ebx        ; NULL
-    int 0x80
-    
-    ; Usar los ticks como semilla
-    mov ecx, eax
-    mov eax, ecx
+
+    ; Obtener el tiempo del sistema 
+    mov eax, 13         ; sys_time 
+    xor ebx, ebx
+    int 0x80            ; devuelve ticks en EAX
+
+    ; Obtener número aleatorio entre 1 y 6
     xor edx, edx
     mov ebx, 6
-    div ebx             ; Divide por 6 para obtener resto (0-5)
-    inc edx             ; Convierte a 1-6
+    div ebx             ; EAX / 6, resto en EDX (0 a 5)
     mov eax, edx
-    
+    inc eax             ; (1 a 6)
+
     pop edx
     pop ecx
     pop ebx
@@ -401,10 +400,10 @@ _start:
         movzx eax, byte [input]
         sub eax, '0'
         cmp eax, 1
-        jl .invalido
+        jl .error_jugadores
         cmp eax, 5
-        jg .invalido
-
+        jg .error_jugadores
+        
         mov [num_jugadores], eax
         jmp .juego_loop
 
@@ -597,25 +596,21 @@ _start:
 ; Función para imprimir número (EAX)
 print_number:
     push eax
-    push ebx
-    push ecx
-    push edx
-    
+    push esi
+
     ; Convertir número a cadena
     mov esi, buffer
-    call int_to_string
-    
-    ; Imprimir el número
-    mov ecx, eax
-    mov eax, SYS_WRITE
-    mov ebx, STDOUT
-    mov edx, 10  ; Longitud máxima
-    sub edx, eax
-    add edx, ecx
+    call int_to_string   ; EAX contiene el número, lo convierte en cadena en [buffer]
+
+    ; Imprimir la cadena resultante
+    mov ecx, buffer      ; puntero a la cadena
+    call strlen          ; longitud de la cadena en EAX
+    mov edx, eax         ; longitud a EDX
+    mov eax, 4           ; syscall SYS_WRITE
+    mov ebx, 1           ; STDOUT
+    mov ecx, buffer      ; mensaje
     int 0x80
-    
-    pop edx
-    pop ecx
-    pop ebx
+
+    pop esi
     pop eax
     ret
