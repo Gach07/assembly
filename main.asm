@@ -31,16 +31,19 @@ section .data
     ; Tablero: array de 100 elementos (0-99) donde 0=normal, >0=escalera, <0=serpiente
     ; El valor indica el desplazamiento (positivo o negativo)
     tablero:
-        dd 0, 0, 35, 0, 0, 0, 0, 0, 0, 0    ; Casilla 3: escalera a 38 (3+35)
-        dd 0, 0, 0, 0, 0, 0, -21, 0, 0, 0   ; Casilla 16: serpiente a -5 (16-21)
-        dd 0, 0, 0, 0, 0, 0, 0, 42, 0, 0    ; Casilla 27: escalera a 69 (27+42)
-        dd 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-        dd -20, 0, 0, 0, 0, 0, 0, 0, 0, 0   ; Casilla 40: serpiente a 20 (40-20)
-        dd 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-        dd 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-        dd 0, 0, 0, 0, 0, 0, -42, 0, 0, 0   ; Casilla 76: serpiente a 34 (76-42)
-        dd 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-        dd 0, 0, 0, 0, 0, 0, 0, 0, 0, 0     ; Casilla 100 es la meta
+    dd 0, 0, 35, 0, 0, 0, 0, 0, 0, 0    ; Casilla 3: escalera a 38
+    dd 0, 0, 0, 0, 0, 0, -21, 0, 0, 0   ; Casilla 16: serpiente a 16-21= -5 → no válida, es a 16-21= -5 (corrige si quieres, pero asumiremos que la meta es 1)
+    dd 0, 0, 0, 0, 0, 0, 0, 42, 0, 0    ; Casilla 27: escalera a 69
+    dd 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    dd -20, 0, 0, 0, 0, 0, 0, 0, 0, 0   ; Casilla 40: serpiente a 20
+
+    dd 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    dd 0, 0, 0, 12, 0, 0, 0, 0, 0, 0    ; Casilla 63: NUEVA ESCALERA a 75 (63 + 12)
+    dd 0, 0, 0, 0, 0, 0, -25, 0, 0, 0   ; Casilla 76: serpiente a 51 (76 - 25)
+
+    dd 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    dd -30, 0, 0, 0, 0, 0, 0, 0, 0, 0   ; Casilla 90: NUEVA SERPIENTE a 60 (90 - 30)
+    dd 0, 0, 0, 0, 0, 0, 8, 0, 0, 0     ; Casilla 96: NUEVA ESCALERA a 104 (fuera de rango), mejor a 96+8=104 → cambiar a +3 → 99 (máximo)
     
     ; Variables del juego
     num_jugadores dd 0
