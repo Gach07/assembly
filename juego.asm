@@ -1,4 +1,4 @@
-section .dataMore actions
+section .data
     ; Mensajes del juego
     msg_bienvenida db 'Bienvenido a Serpientes y Escaleras!', 0xA, 0
     msg_jugadores db 'Ingrese numero de jugadores (1-5): ', 0
@@ -49,10 +49,11 @@ section .dataMore actions
     turno_actual dd 0               ; Índice del jugador actual (0-4)
     total_turnos dd 0               ; Turnos totales del juego
     
+    ; Buffer para entrada/salida
+    buffer db 0
 
 section .bss
     input resb 2
-    buffer resb 16
 
 section .text
 
@@ -120,52 +121,47 @@ print_tablero:
     
     ; Imprimir borde superior
     print msg_tablero_superior
-    
+
     ; Inicializar contadores
     mov ecx, 10        ; Filas (de 10 a 1)
     mov ebx, 100       ; Número de casilla inicial (fila 10)
-    
+
     .fila_loop:
         ; Imprimir borde lateral izquierdo
         print msg_tablero_lateral
         
-        ; Determinar dirección de la fila
+        ; Determinar dirección de la fila (alternar izquierda/derecha)
         mov eax, ecx
         and eax, 1
-        jz .fila_izquierda
+        jnz .fila_derecha
         
-        ; Fila derecha (números ascendentes)
+        ; Fila izquierda (números descendentes)
         mov edx, ebx
         sub edx, 9     ; Comenzar desde ebx-9
-        jmp .casilla_loop
         
-        .fila_izquierda:
-        ; Fila izquierda (números descendentes)
-        mov edx, ebx    ; Comenzar desde ebx
-        
-        .casilla_loop:
+        .casilla_loop_izquierda:
             ; Imprimir casilla
             call print_casilla
-            
-            ; Manejar dirección basada en el tipo de fila
-            mov eax, ecx
-            and eax, 1
-            jz .decrementar
-            
-            ; Incrementar para fila derecha
-            inc edx
-            mov eax, ebx
-            sub eax, 9
-            cmp edx, ebx
-            jbe .casilla_loop
-            jmp .fin_fila
-            
-            .decrementar:
-            ; Decrementar para fila izquierda
             dec edx
             cmp edx, ebx
-            jae .casilla_loop
+            jbe .fin_fila
+            jmp .casilla_loop_izquierda
             
+        .fila_derecha:
+            ; Fila derecha (números ascendentes)
+            mov edx, ebx
+            sub edx, 9     ; Comenzar desde ebx-9
+            
+            .casilla_loop_derecha:
+                ; Imprimir casilla
+                call print_casilla
+                inc edx
+                mov eax, ebx
+                sub eax, 9
+                cmp edx, ebx
+                jbe .fin_fila
+                jmp .casilla_loop_derecha
+                
         .fin_fila:
             ; Imprimir borde lateral derecho y nueva línea
             print msg_tablero_lateral
@@ -244,106 +240,18 @@ print_casilla:
 
 ; Modificar el bucle principal para mostrar el tablero
 .juego_loop:
-    ; Mostrar el tablero antes del turno
+    ; ... (código existente antes del turno)
+    
+    ; Mostrar tablero antes de cada turno
     call print_tablero
     
-    ; Obtener turno actual
-    mov eax, [turno_actual]
-    mov ebx, eax
-    inc eax
-    print msg_turno
-    call print_number
-
-    ; Esperar ENTER para lanzar dado
-    print msg_presione_enter
-    read input, 2
-
-    ; Lanzar dado
-    call random_dado
-    print msg_dado
-    call print_number
-
-    ; Actualizar posición del jugador
-    mov ecx, [turno_actual]
-    mov edx, [jugadores_pos + ecx*4]
-    add edx, eax
-    cmp edx, 100
-    jg .mantener_pos
-    mov [jugadores_pos + ecx*4], edx
-    jmp .verificar_tablero
-
-.mantener_pos:
-    ; Si pasa de 100, no se mueve
-    nop
-
-.verificar_tablero:
-    ; Revisar si hay serpiente o escalera
-    mov eax, [jugadores_pos + ecx*4]
-    dec eax
-    mov ebx, [tablero + eax*4]
-    test ebx, ebx
-    jz .actualizar_turno
-
-    ; Ajustar posición
-    add eax, ebx
-    inc eax
-    mov [jugadores_pos + ecx*4], eax
-
-.actualizar_turno:
-    ; Sumar un turno
-    inc dword [jugadores_turnos + ecx*4]
-    inc dword [total_turnos]
-
-    ; Revisar si ganó
-    mov eax, [jugadores_pos + ecx*4]
-    cmp eax, 100
-    je .victoria
-
-    ; Cambiar al siguiente jugador
-    mov eax, [num_jugadores]
-    dec eax
-    cmp [turno_actual], eax
-    jne .siguiente_turno
-    mov dword [turno_actual], 0
-    jmp .juego_loop
-
-.siguiente_turno:
-    inc dword [turno_actual]
-    jmp .juego_loop
-
-.victoria:
-    print msg_victoria
-    mov eax, [turno_actual]
-    inc eax
-    call print_number
-    print msg_ganador
-
-    print msg_turnos_total
-    mov eax, [total_turnos]
-    call print_number
-    print msg_nueva_linea
-
-    print msg_posiciones_otros
-    mov ecx, [num_jugadores]
-    xor ebx, ebx
-
-.mostrar_otros:
-    cmp ebx, [turno_actual]
-    je .saltar_jugador
-
-    ; Mostrar Jugador #
-    print msg_tablero_jugador
-    mov eax, ebx
-    inc eax
-    call print_number
-    print msg_posicion
-    mov eax, [jugadores_pos + ebx*4]
-    call print_number
-    print msg_nueva_linea    
+    ; ... (resto del código existente)
+    
+    ; Mostrar tablero después de cada movimiento
+    call print_tablero
 
 ; Función para convertir número a cadena (para imprimir)
 ; Entrada: EAX = número, ESI = puntero al buffer
-
 int_to_string:
     add esi, 9          ; Trabajamos desde el final del buffer
     mov byte [esi], 0    ; Carácter nulo terminador
@@ -375,22 +283,12 @@ random_dado:
     ; Usar los ticks como semilla
     mov ecx, eax
     mov eax, ecx
-
-    ; Obtener el tiempo del sistema 
-    mov eax, 13         ; sys_time 
-    xor ebx, ebx
-    int 0x80            ; devuelve ticks en EAX
-
-    ; Obtener número aleatorio entre 1 y 6
     xor edx, edx
     mov ebx, 6
     div ebx             ; Divide por 6 para obtener resto (0-5)
     inc edx             ; Convierte a 1-6
-    div ebx             ; EAX / 6, resto en EDX (0 a 5)
     mov eax, edx
     
-    inc eax             ; (1 a 6)
-
     pop edx
     pop ecx
     pop ebx
@@ -400,29 +298,11 @@ random_dado:
 _start:
     ; Mostrar mensaje de bienvenida
     print msg_bienvenida
-
+    
     ; Pedir número de jugadores
     .pedir_jugadores:
         print msg_jugadores
         read input, 2
-
-        ; Convertir ASCII a número
-        movzx eax, byte [input]
-        sub eax, '0'
-        cmp eax, 1
-        jl .invalido
-        jl .error_jugadores
-        cmp eax, 5
-        jg .invalido
-
-        jg .error_jugadores
-        
-        mov [num_jugadores], eax
-        jmp .juego_loop
-
-    .invalido:
-        print msg_error_jugadores
-        jmp .pedir_jugadores
         
         ; Validar entrada
         mov al, [input]
@@ -540,6 +420,7 @@ _start:
                     mov eax, [jugadores_pos + ebx*4]
                     call print_number
                     print msg_nueva_linea
+                    call print_tablero
                     
                     ; Verificar victoria
                     cmp eax, 100
@@ -613,8 +494,6 @@ print_number:
     push ecx
     push edx
     
-    push esi
-
     ; Convertir número a cadena
     mov esi, buffer
     call int_to_string
@@ -626,21 +505,10 @@ print_number:
     mov edx, 10  ; Longitud máxima
     sub edx, eax
     add edx, ecx
-    call int_to_string   ; EAX contiene el número, lo convierte en cadena en [buffer]
-
-    ; Imprimir la cadena resultante
-    mov ecx, buffer      ; puntero a la cadena
-    call strlen          ; longitud de la cadena en EAX
-    mov edx, eax         ; longitud a EDX
-    mov eax, 4           ; syscall SYS_WRITE
-    mov ebx, 1           ; STDOUT
-    mov ecx, buffer      ; mensaje
     int 0x80
     
     pop edx
     pop ecx
     pop ebx
-
-    pop esi
     pop eax
     ret
