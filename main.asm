@@ -232,31 +232,7 @@ print_casilla:
     popa
     ret
     
-        jmp .fin_casilla
     
-    .imprimir_jugador:
-        print color_azul
-        print msg_tablero_jugador
-        mov eax, ebx
-        inc eax
-        call print_number
-        print color_reset
-        jmp .fin_casilla
-    
-    .imprimir_vacio:
-        ; Imprimir número de casilla (o espacio)
-        mov eax, edx
-        call print_number
-    
-    .fin_casilla:
-        ; Espacio entre casillas
-        mov byte [buffer], ' '
-        mov byte [buffer+1], 0
-        print buffer
-        
-    popa
-    ret
-
 ; Modificar el bucle principal para mostrar el tablero
 .juego_loop:
     
