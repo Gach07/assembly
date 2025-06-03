@@ -122,7 +122,7 @@ print_tablero:
     print msg_tablero_superior
     
     ; Inicializar contadores
-    mov ecx, 10        ; Filas (de 10 a 1)
+    mov ecx, 10        ; 10 filas (de 10 a 1)
     mov ebx, 100       ; Número de casilla inicial (fila 10)
     
     .fila_loop:
@@ -134,38 +134,35 @@ print_tablero:
         and eax, 1
         jz .fila_izquierda
         
-        ; Fila derecha (números ascendentes)
+        ; Fila derecha (números ascendentes: ebx-9 a ebx)
         mov edx, ebx
-        sub edx, 9     ; Comenzar desde ebx-9
-        jmp .casilla_loop
+        sub edx, 9      ; Comenzar desde ebx-9
+        mov esi, edx    ; Guardar inicio de fila
         
-        .fila_izquierda:
-        ; Fila izquierda (números descendentes)
-        mov edx, ebx    ; Comenzar desde ebx
-        
-        .casilla_loop:
+        .fila_derecha_loop:
             ; Imprimir casilla
             call print_casilla
             
-            ; Manejar dirección basada en el tipo de fila
-            mov eax, ecx
-            and eax, 1
-            jz .decrementar
-            
-            ; Incrementar para fila derecha
+            ; Avanzar al siguiente número
             inc edx
-            mov eax, ebx
-            sub eax, 9
             cmp edx, ebx
-            jbe .casilla_loop
-            jmp .fin_fila
+            jle .fila_derecha_loop
+        jmp .fin_fila
+        
+        .fila_izquierda:
+        ; Fila izquierda (números descendentes: ebx a ebx-9)
+        mov edx, ebx    ; Comenzar desde ebx
+        mov esi, edx    ; Guardar inicio de fila
+        
+        .fila_izquierda_loop:
+            ; Imprimir casilla
+            call print_casilla
             
-            .decrementar:
-            ; Decrementar para fila izquierda
+            ; Retroceder al número anterior
             dec edx
             cmp edx, ebx
-            jae .casilla_loop
-            
+            jge .fila_izquierda_loop
+        
         .fin_fila:
             ; Imprimir borde lateral derecho y nueva línea
             print msg_tablero_lateral
@@ -188,6 +185,12 @@ print_tablero:
 print_casilla:
     pusha
     
+    ; Reservar espacio para el número (2 dígitos + espacio)
+    mov byte [buffer], ' '
+    mov byte [buffer+1], ' '
+    mov byte [buffer+2], ' '
+    mov byte [buffer+3], 0
+    
     ; Verificar si hay jugadores en esta casilla
     mov ecx, [num_jugadores]
     xor ebx, ebx
@@ -202,43 +205,55 @@ print_casilla:
     dec eax
     mov eax, [tablero + eax*4]
     test eax, eax
-    jz .imprimir_vacio
+    jz .imprimir_numero
     
     cmp eax, 0
     jg .imprimir_escalera
     
     ; Imprimir serpiente
     print color_rojo
-    print msg_tablero_serpiente
+    mov byte [buffer], 'S'
+    print buffer
     print color_reset
     jmp .fin_casilla
     
     .imprimir_escalera:
         print color_verde
-        print msg_tablero_escalera
+        mov byte [buffer], 'E'
+        print buffer
         print color_reset
         jmp .fin_casilla
     
     .imprimir_jugador:
         print color_azul
-        print msg_tablero_jugador
+        mov byte [buffer], 'J'
+        mov byte [buffer+1], 0
+        print buffer
         mov eax, ebx
-        inc eax
-        call print_number
+        add al, '1'
+        mov [buffer], al
+        mov byte [buffer+1], 0
+        print buffer
         print color_reset
         jmp .fin_casilla
     
-    .imprimir_vacio:
-        ; Imprimir número de casilla (o espacio)
+    .imprimir_numero:
+        ; Imprimir número de casilla (2 dígitos)
         mov eax, edx
-        call print_number
+        xor edx, edx
+        mov ebx, 10
+        div ebx         ; EDX = resto, EAX = cociente
+        
+        ; Convertir dígitos a ASCII
+        add al, '0'
+        add dl, '0'
+        
+        ; Almacenar en buffer
+        mov [buffer], al
+        mov [buffer+1], dl
+        print buffer
     
     .fin_casilla:
-        ; Espacio entre casillas
-        mov byte [buffer], ' '
-        mov byte [buffer+1], 0
-        print buffer
-        
     popa
     ret
 
